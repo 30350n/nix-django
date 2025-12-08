@@ -13,6 +13,7 @@ pkgs.lib.extendMkDerivation {
         doCheck ? true,
         checkPhase ? "",
         python ? pkgs.python3,
+        static_root ? "staticfiles",
         ...
     }: {
         nativeBuildInputs = let
@@ -57,5 +58,7 @@ pkgs.lib.extendMkDerivation {
                 find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
             + checkPhase;
+
+        passthru.static_root = "${placeholder "out"}/${static_root}";
     };
 }
