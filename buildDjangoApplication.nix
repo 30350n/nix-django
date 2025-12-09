@@ -1,11 +1,12 @@
 {
     pkgs,
+    lib,
     uv2nix,
     pyproject-nix,
     pyproject-build-systems,
     ...
 }:
-pkgs.lib.extendMkDerivation {
+lib.extendMkDerivation {
     constructDrv = pkgs.stdenvNoCC.mkDerivation;
     extendDrvArgs = finalAttrs: {
         name,
@@ -33,7 +34,7 @@ pkgs.lib.extendMkDerivation {
             overlay = workspace.mkPyprojectOverlay {sourcePreference = "wheel";};
             pythonSet = (
                 (pkgs.callPackage pyproject-nix.build.packages {inherit python;}).overrideScope (
-                    pkgs.lib.composeManyExtensions [
+                    lib.composeManyExtensions [
                         pyproject-build-systems.overlays.wheel
                         overlay
                     ]
@@ -43,7 +44,7 @@ pkgs.lib.extendMkDerivation {
             [(pythonSet.mkVirtualEnv "${name}-env" workspace.deps.default)]
             ++ nativeBuildInputs;
 
-        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath nativeBuildInputs;
+        LD_LIBRARY_PATH = lib.makeLibraryPath nativeBuildInputs;
 
         buildPhase = let
             generate_secret_key = pkgs.writeText "generate_secret_key.py" ''
@@ -77,7 +78,7 @@ pkgs.lib.extendMkDerivation {
                 python manage.py shell < "${clean_static_sources}"
                 find . -type d \( -name "__pycache__" -or -empty \) -exec rm -rf {} +
 
-                rm ${pkgs.lib.concatStringsSep " " skipInstall}
+                rm ${lib.concatStringsSep " " skipInstall}
 
                 mkdir -p $out/var/www/${name}
                 cp -r ./* $out/var/www/${name}/

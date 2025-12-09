@@ -25,9 +25,15 @@
         pyproject-build-systems,
         ...
     } @ inputs: {
-        lib = {pkgs, ...}: {
-            buildDjangoApplication =
-                import ./buildDjangoApplication.nix ({inherit pkgs;} // inputs);
+        lib = {
+            lib ? pkgs.lib,
+            pkgs,
+            ...
+        }: {
+            buildDjangoApplication = import ./buildDjangoApplication.nix ({
+                inherit lib pkgs;
+            }
+            // inputs);
         };
     };
 }
