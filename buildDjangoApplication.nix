@@ -38,6 +38,8 @@ pkgs.lib.extendMkDerivation {
             [(pythonSet.mkVirtualEnv "${name}-env" workspace.deps.default)]
             ++ nativeBuildInputs;
 
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath nativeBuildInputs;
+
         buildPhase = let
             generate_secret_key = pkgs.writeText "generate_secret_key.py" ''
                 from django.core.management.utils import get_random_secret_key
