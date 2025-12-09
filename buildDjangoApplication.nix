@@ -13,7 +13,7 @@ pkgs.lib.extendMkDerivation {
         doCheck ? true,
         checkPhase ? "",
         python ? pkgs.python3,
-        static_root ? "staticfiles",
+        staticRoot ? "staticfiles",
         ...
     }: {
         nativeBuildInputs = let
@@ -60,6 +60,6 @@ pkgs.lib.extendMkDerivation {
             ''
             + checkPhase;
 
-        passthru.static_root = "${placeholder "out"}/${static_root}";
+        passthru.staticRoot = "${placeholder "out"}/var/www/${staticRoot}";
     };
 }
