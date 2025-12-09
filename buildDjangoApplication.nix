@@ -8,14 +8,21 @@
 pkgs.lib.extendMkDerivation {
     constructDrv = pkgs.stdenvNoCC.mkDerivation;
     extendDrvArgs = finalAttrs: {
+        name,
+        version ? "0",
         nativeBuildInputs ? [],
         buildPhase ? "",
         doCheck ? true,
         checkPhase ? "",
         python ? pkgs.python3,
+        skipInstall ? [],
+        installPhase ? "",
         staticRoot ? "staticfiles",
         ...
     }: {
+        pname = name;
+        inherit version;
+
         nativeBuildInputs = let
             workspace = uv2nix.lib.workspace.loadWorkspace {workspaceRoot = finalAttrs.src;};
             overlay = workspace.mkPyprojectOverlay {sourcePreference = "wheel";};
@@ -28,7 +35,7 @@ pkgs.lib.extendMkDerivation {
                 )
             );
         in
-            [(pythonSet.mkVirtualEnv "${finalAttrs.pname}-env" workspace.deps.default)]
+            [(pythonSet.mkVirtualEnv "${name}-env" workspace.deps.default)]
             ++ nativeBuildInputs;
 
         buildPhase = let
@@ -59,6 +66,23 @@ pkgs.lib.extendMkDerivation {
                 find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
             + checkPhase;
+
+        installPhase = let
+            skipInstallArgs = pkgs.lib.concatStringsSep " " (
+                map (file: "-not -name \"${file}\"") ([
+                    "flake.lock"
+                    "flake.nix"
+                    "pyproject.toml"
+                    "uv.lock"
+                ]
+                ++ skipInstall)
+            );
+        in
+            ''
+                mkdir -p $out/var/www/${name}
+                find . ${skipInstallArgs} -exec cp -r --parents {} $out/var/www/${name}/ \;
+            ''
+            + installPhase;
 
         passthru.staticRoot = "${placeholder "out"}/var/www/${staticRoot}";
     };
