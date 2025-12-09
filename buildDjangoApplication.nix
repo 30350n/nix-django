@@ -15,7 +15,12 @@ pkgs.lib.extendMkDerivation {
         doCheck ? true,
         checkPhase ? "",
         python ? pkgs.python3,
-        skipInstall ? [],
+        skipInstall ? [
+            "flake.lock"
+            "flake.nix"
+            "pyproject.toml"
+            "uv.lock"
+        ],
         installPhase ? "",
         staticRoot ? "staticfiles",
         ...
@@ -67,22 +72,15 @@ pkgs.lib.extendMkDerivation {
                 for _, source in settings.STATICFILES_DIRS:
                     shutil.rmtree(source, ignore_errors=True)
             '';
-            skipInstallArgs = pkgs.lib.concatStringsSep " " (
-                map (file: "-not -name \"${file}\"") ([
-                    "flake.lock"
-                    "flake.nix"
-                    "pyproject.toml"
-                    "uv.lock"
-                ]
-                ++ skipInstall)
-            );
         in
             ''
                 python manage.py shell < "${clean_static_sources}"
                 find . -type d \( -name "__pycache__" -or -empty \) -exec rm -rf {} +
 
+                rm ${pkgs.lib.concatStringsSep " " skipInstall}
+
                 mkdir -p $out/var/www/${name}
-                find . ${skipInstallArgs} -exec cp -r --parents {} $out/var/www/${name}/ \;
+                cp -r ./* $out/var/www/${name}/
             ''
             + installPhase;
 
