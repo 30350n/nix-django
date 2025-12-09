@@ -21,18 +21,13 @@
     pkgs = nixpkgs.legacyPackages.${system};
   in {
     packages.${system}.default = (nix-django.lib pkgs).buildDjangoApplication rec {
-      pname = ...;
-      version = ...;
+      name = ...;
       src = ./.;
 
-      nativeBuildInputs = with pkgs; [
-          ... # additional required nativeBuildInputs
-      ];
-
-      installPhase = ''
-        mkdir -p $out/var/www/${pname}
-        cp -r ./* $out/var/www/${pname}/
-      '';
+      # optional: additional required nativeBuildInputs
+      # nativeBuildInputs = with pkgs; [
+      #     ... 
+      # ];
     };
   };
 }
