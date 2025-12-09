@@ -45,18 +45,10 @@ pkgs.lib.extendMkDerivation {
                 from django.core.management.utils import get_random_secret_key
                 print(get_random_secret_key())
             '';
-            clean_static_sources = pkgs.writeText "clean_static_sources.py" ''
-                import importlib, os, shutil
-                settings = importlib.import_module(os.environ["DJANGO_SETTINGS_MODULE"])
-                for _, source in settings.STATICFILES_DIRS:
-                    shutil.rmtree(source, ignore_errors=True)
-            '';
         in
             ''
                 python "${generate_secret_key}" > secret-key.txt
                 python manage.py collectstatic --no-input
-                python manage.py shell < "${clean_static_sources}"
-                find . -type d \( -name "__pycache__" -or -empty \) -exec rm -rf {} +
             ''
             + buildPhase;
 
@@ -65,11 +57,16 @@ pkgs.lib.extendMkDerivation {
             ''
                 python manage.py test
                 python manage.py check --deploy --fail-level WARNING
-                find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
             + checkPhase;
 
         installPhase = let
+            clean_static_sources = pkgs.writeText "clean_static_sources.py" ''
+                import importlib, os, shutil
+                settings = importlib.import_module(os.environ["DJANGO_SETTINGS_MODULE"])
+                for _, source in settings.STATICFILES_DIRS:
+                    shutil.rmtree(source, ignore_errors=True)
+            '';
             skipInstallArgs = pkgs.lib.concatStringsSep " " (
                 map (file: "-not -name \"${file}\"") ([
                     "flake.lock"
@@ -81,6 +78,9 @@ pkgs.lib.extendMkDerivation {
             );
         in
             ''
+                python manage.py shell < "${clean_static_sources}"
+                find . -type d \( -name "__pycache__" -or -empty \) -exec rm -rf {} +
+
                 mkdir -p $out/var/www/${name}
                 find . ${skipInstallArgs} -exec cp -r --parents {} $out/var/www/${name}/ \;
             ''
