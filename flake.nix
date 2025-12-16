@@ -29,10 +29,7 @@
                 {inherit lib pkgs;}
                 // inputs
             );
-            nixosModules = {
-                default = self.nixosModules.django;
-                django = ./django.nix;
-            };
+            nixosModules.nix-django = ./django.nix;
         };
     };
 }
