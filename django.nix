@@ -22,7 +22,6 @@
         djangoServices =
             lib.filterAttrs (_: djangoConfig: djangoConfig.enable) config.services.django;
         gunicornSocket = name: "/run/gunicorn-${name}/gunicorn.sock";
-        python = djangoConfig: "${djangoConfig.package.pythonVirtualEnv}/bin/python";
     in {
         systemd.services = let
             migrationServices = lib.mapAttrs' (name: djangoConfig:
@@ -38,7 +37,7 @@
                     };
                     environment.DATA_DIR = "/var/www/${name}";
                     script = ''
-                        ${python djangoConfig} manage.py migrate --no-input
+                        ${djangoConfig.package}/bin/python manage.py migrate --no-input
                     '';
                 })
             djangoServices;
@@ -59,7 +58,7 @@
                 };
                 environment.DATA_DIR = "/var/www/${name}";
                 script = ''
-                    ${python djangoConfig} -m gunicorn ${name}.wsgi \
+                    ${djangoConfig.package}/bin/python -m gunicorn ${name}.wsgi \
                         --workers ${toString djangoConfig.workers} \
                         --bind unix:${gunicornSocket name}
                 '';

@@ -45,6 +45,7 @@ lib.extendMkDerivation {
         pname = name;
         inherit version;
 
+        buildInputs = with pkgs; [makeWrapper];
         nativeBuildInputs = [pythonVirtualEnv] ++ nativeBuildInputs;
 
         LD_LIBRARY_PATH = lib.makeLibraryPath nativeBuildInputs;
@@ -87,6 +88,13 @@ lib.extendMkDerivation {
 
                 mkdir -p $out/var/www/${name}
                 cp -r ./* $out/var/www/${name}/
+
+                mkdir -p $out/bin
+                echo 'python "$@"' > $out/bin/python
+                chmod +x $out/bin/python
+                wrapProgram $out/bin/python \
+                    --prefix PATH : $PATH \
+                    --prefix LD_LIBRARY_PATH : $LD_LIBRARY_PATH
             ''
             + installPhase;
 
@@ -101,7 +109,6 @@ lib.extendMkDerivation {
             removeStorePrefix = path:
                 builtins.elemAt (builtins.match (builtins.storeDir + "/.+/(.*)") path) 0;
         in rec {
-            inherit pythonVirtualEnv;
             appDirectory = "${finalAttrs.finalPackage.out}/var/www/${name}";
             settings = {
                 ALLOWED_HOSTS = lib.splitString ", " (
