@@ -63,7 +63,7 @@ lib.extendMkDerivation {
         inherit doCheck;
         checkPhase =
             ''
-                python manage.py test
+                python manage.py test --no-input
                 python manage.py check --deploy --fail-level WARNING
                 find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
