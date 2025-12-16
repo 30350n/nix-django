@@ -2,7 +2,7 @@
 
 ## Packaging Django Applications
 
-To package a Django application, create a `flake.nix` file in your project repository, add `nix-django` as an input and build your package using `buildDjangoApplication`.
+To package a Django application, create a `flake.nix` file in the project repository, add `nix-django` as an input and build the package using `buildDjangoApplication`.
 
 `flake.nix` example:
 
@@ -76,3 +76,18 @@ buildDjangoApplication {
 #### `STATIC_ROOT`
 
 The `STATIC_ROOT` directory has to be set relative to the project root.
+
+#### Data Storage
+
+The `DATA_DIR` environment variable should be used for storing any permanent data (for example a sqlite database file).
+
+`settings.py` example:
+
+```python
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(os.environ.get("DATA_DIR", BASE_DIR)) / "db.sqlite3",
+    }
+}
+```

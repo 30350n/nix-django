@@ -100,15 +100,14 @@ lib.extendMkDerivation {
                 '');
             removeStorePrefix = path:
                 builtins.elemAt (builtins.match (builtins.storeDir + "/.+/(.*)") path) 0;
-        in {
+        in rec {
             inherit pythonVirtualEnv;
+            appDirectory = "${finalAttrs.finalPackage.out}/var/www/${name}";
             settings = {
                 ALLOWED_HOSTS = lib.splitString ", " (
                     builtins.replaceStrings ["[" "'" "]"] ["" "" ""] (getAppSetting "ALLOWED_HOSTS")
                 );
-                STATIC_ROOT = "${placeholder "out"}/var/www/${name}/${
-                    removeStorePrefix (getAppSetting "STATIC_ROOT")
-                }";
+                STATIC_ROOT = "${appDirectory}/${removeStorePrefix (getAppSetting "STATIC_ROOT")}";
                 STATIC_URL = getAppSetting "STATIC_URL";
             };
         };

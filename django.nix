@@ -32,8 +32,9 @@
                         Type = "oneshot";
                         User = name;
                         Group = name;
-                        WorkingDirectory = "${config.package}";
+                        WorkingDirectory = config.package.appDirectory;
                     };
+                    environment.DATA_DIR = "/var/www/${name}";
                     script = ''
                         ${config.package.pythonVirtualEnv}/bin/python manage.py migrate --no-input
                     '';
@@ -49,11 +50,12 @@
                     User = name;
                     Group = name;
                     RuntimeDirectory = "gunicorn-${name}";
-                    WorkingDirectory = config.package;
+                    WorkingDirectory = config.package.appDirectory;
                     ExecReload = "kill -s HUP $MAINPID";
                     KillMode = "mixed";
                     PrivateTmp = true;
                 };
+                environment.DATA_DIR = "/var/www/${name}";
                 script = ''
                     ${config.package.pythonVirtualEnv}/bin/python -m gunicorn ${name}.wsgi \
                         --workers ${toString config.workers} \
