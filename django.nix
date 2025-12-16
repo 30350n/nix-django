@@ -95,6 +95,9 @@
 
                     reverse_proxy unix/${gunicornSocket name}
                 '';
+                logFormat = ''
+                    output file ${config.services.caddy.logDir}/access-${name}.log
+                '';
             })
         (lib.filterAttrs (_: djangoConfig: djangoConfig.reverseProxy == "caddy") djangoServices);
     };
