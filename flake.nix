@@ -29,7 +29,7 @@
                 {inherit lib pkgs;}
                 // inputs
             );
-            nixosModules.nix-django = ./django.nix;
         };
+        nixosModules.nix-django = ./django.nix;
     };
 }
