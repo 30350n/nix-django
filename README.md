@@ -1,6 +1,10 @@
 # nix-django
 
-## Usage Example
+## Packaging Django Applications
+
+To package a Django application, create a `flake.nix` file in your project repository, add `nix-django` as an input and build your package using `buildDjangoApplication`.
+
+`flake.nix` example:
 
 ```nix
 {
@@ -20,7 +24,7 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
   in {
-    packages.${system}.default = (nix-django.lib pkgs).buildDjangoApplication rec {
+    packages.${system}.default = (nix-django.lib pkgs).buildDjangoApplication {
       name = ...;
       src = ./.;
 
