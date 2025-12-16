@@ -87,7 +87,7 @@
         in
             lib.nameValuePair (lib.concatStringsSep ", " settings.ALLOWED_HOSTS) {
                 extraConfig = ''
-                    handle_path ${settings.STATIC_URL} {
+                    handle_path ${settings.STATIC_URL}* {
                         root * ${settings.STATIC_ROOT}
                         file_server
                     }
