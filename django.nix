@@ -3,7 +3,7 @@
     lib,
     ...
 }: {
-    options.django = with lib;
+    options.services.django = with lib;
         mkOption {
             type = types.attrsOf (types.submodule {
                 options = {
