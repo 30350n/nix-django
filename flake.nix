@@ -19,21 +19,20 @@
         };
     };
 
-    outputs = {
-        pyproject-nix,
-        uv2nix,
-        pyproject-build-systems,
-        ...
-    } @ inputs: {
+    outputs = {self, ...} @ inputs: {
         lib = {
             lib ? pkgs.lib,
             pkgs,
             ...
         }: {
-            buildDjangoApplication = import ./buildDjangoApplication.nix ({
-                inherit lib pkgs;
-            }
-            // inputs);
+            buildDjangoApplication = import ./buildDjangoApplication.nix (
+                {inherit lib pkgs;}
+                // inputs
+            );
+            nixosModules = {
+                default = self.nixosModules.django;
+                django = ./django.nix;
+            };
         };
     };
 }
