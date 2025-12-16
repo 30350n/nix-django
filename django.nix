@@ -19,11 +19,13 @@
         };
 
     config = let
-        enabledDjangoServices = lib.filterAttrs (_: config: config.enable) config.services.django;
+        djangoServices =
+            lib.filterAttrs (_: djangoConfig: djangoConfig.enable) config.services.django;
         gunicornSocket = name: "/run/gunicorn-${name}/gunicorn.sock";
+        python = djangoConfig: "${djangoConfig.package.pythonVirtualEnv}/bin/python";
     in {
         systemd.services = let
-            migrationServices = lib.mapAttrs' (name: config:
+            migrationServices = lib.mapAttrs' (name: djangoConfig:
                 lib.nameValuePair "${name}-migrate" {
                     description = "${name} database migrations";
                     wantedBy = ["multi-user.target"];
@@ -32,15 +34,15 @@
                         Type = "oneshot";
                         User = name;
                         Group = name;
-                        WorkingDirectory = config.package.appDirectory;
+                        WorkingDirectory = djangoConfig.package.appDirectory;
                     };
                     environment.DATA_DIR = "/var/www/${name}";
                     script = ''
-                        ${config.package.pythonVirtualEnv}/bin/python manage.py migrate --no-input
+                        ${python djangoConfig} manage.py migrate --no-input
                     '';
                 })
-            enabledDjangoServices;
-            gunicornServices = builtins.mapAttrs (name: config: {
+            djangoServices;
+            gunicornServices = builtins.mapAttrs (name: djangoConfig: {
                 description = "${name} django application";
                 wantedBy = ["multi-user.target"];
                 requires = ["${name}-migrate.service"];
@@ -50,19 +52,19 @@
                     User = name;
                     Group = name;
                     RuntimeDirectory = "gunicorn-${name}";
-                    WorkingDirectory = config.package.appDirectory;
+                    WorkingDirectory = djangoConfig.package.appDirectory;
                     ExecReload = "kill -s HUP $MAINPID";
                     KillMode = "mixed";
                     PrivateTmp = true;
                 };
                 environment.DATA_DIR = "/var/www/${name}";
                 script = ''
-                    ${config.package.pythonVirtualEnv}/bin/python -m gunicorn ${name}.wsgi \
-                        --workers ${toString config.workers} \
+                    ${python djangoConfig} -m gunicorn ${name}.wsgi \
+                        --workers ${toString djangoConfig.workers} \
                         --bind unix:${gunicornSocket name}
                 '';
             })
-            enabledDjangoServices;
+            djangoServices;
         in
             migrationServices // gunicornServices;
 
@@ -70,7 +72,7 @@
             ["d /var/www 0755 root root - -"]
             ++ (
                 lib.mapAttrsToList (name: _: "d /var/www/${name} 0750 ${name} ${name} - -")
-                enabledDjangoServices
+                djangoServices
             );
 
         users.users = builtins.mapAttrs (name: _: {
@@ -78,19 +80,22 @@
             group = name;
             isSystemUser = true;
         })
-        enabledDjangoServices;
-        users.groups = builtins.mapAttrs (name: _: {inherit name;}) enabledDjangoServices;
+        djangoServices;
+        users.groups = builtins.mapAttrs (name: _: {inherit name;}) djangoServices;
 
-        services.caddy.virtualHosts = lib.mapAttrs' (name: config:
-            lib.nameValuePair (lib.concatStringsSep ", " config.package.settings.ALLOWED_HOSTS) {
+        services.caddy.virtualHosts = lib.mapAttrs' (name: djangoConfig: let
+            settings = djangoConfig.package.settings;
+        in
+            lib.nameValuePair (lib.concatStringsSep ", " settings.ALLOWED_HOSTS) {
                 extraConfig = ''
-                    handle_path ${config.package.settings.STATIC_URL} {
-                        root * ${config.package.settings.STATIC_ROOT}
+                    handle_path ${settings.STATIC_URL} {
+                        root * ${settings.STATIC_ROOT}
                         file_server
                     }
 
                     reverse_proxy unix/${gunicornSocket name}
                 '';
-            }) (lib.filterAttrs (_: config: config.reverseProxy == "caddy") enabledDjangoServices);
+            })
+        (lib.filterAttrs (_: djangoConfig: djangoConfig.reverseProxy == "caddy") djangoServices);
     };
 }
