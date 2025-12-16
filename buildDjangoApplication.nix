@@ -22,6 +22,7 @@ lib.extendMkDerivation {
             "pyproject.toml"
             "uv.lock"
         ],
+        cleanStaticSources ? true,
         installPhase ? "",
         staticRoot ? "staticfiles",
         ...
@@ -55,6 +56,7 @@ lib.extendMkDerivation {
             ''
                 python "${generate_secret_key}" > secret-key.txt
                 python manage.py collectstatic --no-input
+                find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
             + buildPhase;
 
@@ -63,21 +65,27 @@ lib.extendMkDerivation {
             ''
                 python manage.py test
                 python manage.py check --deploy --fail-level WARNING
+                find . -type d -name "__pycache__" -exec rm -rf {} +
             ''
             + checkPhase;
 
         installPhase = let
-            clean_static_sources = pkgs.writeText "clean_static_sources.py" ''
-                import importlib, os, shutil
-                settings = importlib.import_module(os.environ["DJANGO_SETTINGS_MODULE"])
+            clean_static_sources_py = pkgs.writeText "clean_static_sources.py" ''
+                import shutil
+                from django.conf import settings
                 for _, source in settings.STATICFILES_DIRS:
                     shutil.rmtree(source, ignore_errors=True)
             '';
+            clean_static_sources =
+                if cleanStaticSources
+                then ''
+                    python manage.py shell < "${clean_static_sources_py}"
+                    find . -type d -empty -exec rmdir {} +
+                ''
+                else "";
         in
-            ''
-                python manage.py shell < "${clean_static_sources}"
-                find . -type d \( -name "__pycache__" -or -empty \) -exec rm -rf {} +
-
+            clean_static_sources
+            + ''
                 rm ${lib.concatStringsSep " " skipInstall}
 
                 mkdir -p $out/var/www/${name}
