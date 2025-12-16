@@ -24,35 +24,32 @@ lib.extendMkDerivation {
         ],
         cleanStaticSources ? true,
         installPhase ? "",
-        staticRoot ? "staticfiles",
         ...
-    }: {
+    }: let
+        workspace = uv2nix.lib.workspace.loadWorkspace {workspaceRoot = finalAttrs.src;};
+        overlay = workspace.mkPyprojectOverlay {sourcePreference = "wheel";};
+        pythonSet = (
+            (pkgs.callPackage pyproject-nix.build.packages {inherit python;}).overrideScope (
+                lib.composeManyExtensions [
+                    pyproject-build-systems.overlays.wheel
+                    overlay
+                ]
+            )
+        );
+        pythonVirtualEnv = pythonSet.mkVirtualEnv "${name}-env" workspace.deps.default;
+        generate_secret_key = pkgs.writeText "generate_secret_key.py" ''
+            from django.core.management.utils import get_random_secret_key
+            print(get_random_secret_key())
+        '';
+    in {
         pname = name;
         inherit version;
 
-        nativeBuildInputs = let
-            workspace = uv2nix.lib.workspace.loadWorkspace {workspaceRoot = finalAttrs.src;};
-            overlay = workspace.mkPyprojectOverlay {sourcePreference = "wheel";};
-            pythonSet = (
-                (pkgs.callPackage pyproject-nix.build.packages {inherit python;}).overrideScope (
-                    lib.composeManyExtensions [
-                        pyproject-build-systems.overlays.wheel
-                        overlay
-                    ]
-                )
-            );
-        in
-            [(pythonSet.mkVirtualEnv "${name}-env" workspace.deps.default)]
-            ++ nativeBuildInputs;
+        nativeBuildInputs = [pythonVirtualEnv] ++ nativeBuildInputs;
 
         LD_LIBRARY_PATH = lib.makeLibraryPath nativeBuildInputs;
 
-        buildPhase = let
-            generate_secret_key = pkgs.writeText "generate_secret_key.py" ''
-                from django.core.management.utils import get_random_secret_key
-                print(get_random_secret_key())
-            '';
-        in
+        buildPhase =
             ''
                 python "${generate_secret_key}" > secret-key.txt
                 python manage.py collectstatic --no-input
@@ -93,6 +90,27 @@ lib.extendMkDerivation {
             ''
             + installPhase;
 
-        passthru.staticRoot = "${placeholder "out"}/var/www/${staticRoot}";
+        passthru = let
+            getAppSetting = setting:
+                builtins.readFile (pkgs.runCommand "getAppSetting" {inherit (finalAttrs) src;} ''
+                    ${pythonVirtualEnv}/bin/python "${generate_secret_key}" > secret-key.txt
+                    echo 'from django.conf import settings; print(settings.${setting}, end="")' \
+                        | ${pythonVirtualEnv}/bin/python $src/manage.py shell -v0 \
+                        > $out
+                '');
+            removeStorePrefix = path:
+                builtins.elemAt (builtins.match (builtins.storeDir + "/.+/(.*)") path) 0;
+        in {
+            inherit pythonVirtualEnv;
+            settings = {
+                ALLOWED_HOSTS = lib.splitString ", " (
+                    builtins.replaceStrings ["[" "'" "]"] ["" "" ""] (getAppSetting "ALLOWED_HOSTS")
+                );
+                STATIC_ROOT = "${placeholder "out"}/var/www/${name}/${
+                    removeStorePrefix (getAppSetting "STATIC_ROOT")
+                }";
+                STATIC_URL = getAppSetting "STATIC_URL";
+            };
+        };
     };
 }
