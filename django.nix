@@ -21,7 +21,7 @@
     config = let
         djangoServices =
             lib.filterAttrs (_: djangoConfig: djangoConfig.enable) config.services.django;
-        gunicornSocket = name: "/run/gunicorn-${name}/gunicorn.sock";
+        gunicornSocket = name: "/run/${name}/gunicorn.sock";
     in {
         systemd.services = let
             migrationServices = lib.mapAttrs' (name: djangoConfig:
@@ -50,7 +50,7 @@
                     NotifyAccess = "all";
                     User = name;
                     Group = name;
-                    RuntimeDirectory = "gunicorn-${name}";
+                    RuntimeDirectory = name;
                     WorkingDirectory = djangoConfig.package.appDirectory;
                     ExecReload = "kill -s HUP $MAINPID";
                     KillMode = "mixed";
