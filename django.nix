@@ -10,6 +10,7 @@
                     enable = mkEnableOption "enable";
                     package = mkOption {type = types.package;};
                     reverseProxy = mkOption {type = types.nullOr (types.enum ["caddy"]);};
+                    useACMEHost = mkOption {type = types.nullOr types.str;};
                     workers = mkOption {
                         type = types.int;
                         default = 1;
@@ -97,6 +98,7 @@
                 logFormat = ''
                     output file ${config.services.caddy.logDir}/access-${name}.log
                 '';
+                inherit (djangoConfig) useACMEHost;
             })
         (lib.filterAttrs (_: djangoConfig: djangoConfig.reverseProxy == "caddy") djangoServices);
     };
